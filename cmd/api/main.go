@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/iamismile/greenlight/internal/data"
 	_ "github.com/lib/pq"
 )
 
@@ -29,6 +30,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	models data.Models
 }
 
 func main() {
@@ -45,18 +47,19 @@ func main() {
 	// New logger instance
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
-	// Application dependency
-	app := &application{
-		config: cfg,
-		logger: logger,
-	}
-
 	db, err := openDB(cfg)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	defer db.Close()
 	logger.Printf("database connection pool established")
+
+	// Application dependency
+	app := &application{
+		config: cfg,
+		logger: logger,
+		models: data.NewModels(db),
+	}
 
 	// Server setup
 	srv := &http.Server{
