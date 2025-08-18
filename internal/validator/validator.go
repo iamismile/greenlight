@@ -39,12 +39,12 @@ func (v *Validator) Check(ok bool, key, message string) {
 }
 
 // In returns true if a specific value is in a list of strings.
-func (v *Validator) In(value string, list ...string) bool {
+func In(value string, list ...string) bool {
 	return slices.Contains(list, value)
 }
 
 // Matches returns true if a string value matches a specific regexp pattern.
-func (v *Validator) Matches(value string, rx *regexp.Regexp) bool {
+func Matches(value string, rx *regexp.Regexp) bool {
 	return rx.MatchString(value)
 }
 
