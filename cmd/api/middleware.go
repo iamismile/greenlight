@@ -67,34 +67,41 @@ func (app *application) rateLimit(next http.Handler) http.Handler {
 	}()
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extract the client's IP address from the request.
-		ip, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil {
-			app.serverErrorResponse(w, r, err)
-			return
-		}
+		if app.config.limiter.enabled {
+			// Extract the client's IP address from the request.
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				app.serverErrorResponse(w, r, err)
+				return
+			}
 
-		// Lock the mutex to prevent this code from being executed concurrently.
-		mu.Lock()
+			// Lock the mutex to prevent this code from being executed concurrently.
+			mu.Lock()
 
-		if _, found := clients[ip]; !found {
-			// Create and add a new client struct to the map if it doesn't already exist.
-			clients[ip] = &client{limiter: rate.NewLimiter(2, 4)}
-		}
+			if _, found := clients[ip]; !found {
+				// Create and add a new client struct to the map if it doesn't already exist.
+				clients[ip] = &client{
+					limiter: rate.NewLimiter(
+						rate.Limit(app.config.limiter.rps),
+						app.config.limiter.burst,
+					),
+				}
+			}
 
-		// Update the last seen time for the client.
-		clients[ip].lastSeen = time.Now()
+			// Update the last seen time for the client.
+			clients[ip].lastSeen = time.Now()
 
-		// Call the Allow() method on the rate limiter for the current IP address. If
-		// the request isn't allowed, unlock the mutex and send a rate limit exceeded response
-		if !clients[ip].limiter.Allow() {
+			// Call the Allow() method on the rate limiter for the current IP address. If
+			// the request isn't allowed, unlock the mutex and send a rate limit exceeded response
+			if !clients[ip].limiter.Allow() {
+				mu.Unlock()
+				app.rateLimitExceededResponse(w, r)
+				return
+			}
+
+			// Unlock the mutex before calling the next handler
 			mu.Unlock()
-			app.rateLimitExceededResponse(w, r)
-			return
 		}
-
-		// Unlock the mutex before calling the next handler
-		mu.Unlock()
 
 		next.ServeHTTP(w, r)
 	})
