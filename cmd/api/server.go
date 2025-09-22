@@ -33,18 +33,25 @@ func (app *application) serve() error {
 		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 		s := <-quit
-		app.logger.PrintInfo("shutting down server", map[string]string{
+		app.logger.PrintInfo("caught signal", map[string]string{
 			"signal": s.String(),
 		})
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		// Shutdown() will return nil if the graceful shutdown was successful, or an
-		// error (which may happen because of a problem closing the listeners, or
-		// because the shutdown didn't complete before the 5-second context deadline is
-		// hit). We relay this return value to the shutdownError channel.
-		shutdownError <- srv.Shutdown(ctx)
+		err := srv.Shutdown(ctx)
+		if err != nil {
+			shutdownError <- err
+		}
+
+		app.logger.PrintInfo("completing background tasks", map[string]string{
+			"addr": srv.Addr,
+		})
+
+		// Wait for all background tasks to complete.
+		app.wg.Wait()
+		shutdownError <- nil
 	}()
 
 	// Start the HTTP server
