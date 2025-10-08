@@ -56,6 +56,13 @@ type User struct {
 	Version   int       `json:"-"`
 }
 
+var AnonymousUser = &User{}
+
+// Check if a user instance is the anonymous
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
+}
+
 func ValidateEmail(v *validator.Validator, email string) {
 	v.Check(email != "", "email", "must be provided")
 	v.Check(validator.Matches(email, validator.EmailRX), "email", "must be a valid email address")
