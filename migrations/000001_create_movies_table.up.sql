@@ -9,6 +9,13 @@
 --- To check which migration version database is currently on
 --- migrate -path=./migrations -database=$GREENLIGHT_DB_DSN version
 
+--- if "error: Dirty database version 6. Fix and force version." happens
+--- Do this procedure
+--- migrate -path ./migrations -database $GREENLIGHT_DB_DSN version (Get version)
+--- migrate -path ./migrations -database $GREENLIGHT_DB_DSN force 5 (Go to the prev version)
+--- migrate -path ./migrations -database $GREENLIGHT_DB_DSN version (Check DB in prev version)
+--- migrate -path ./migrations -database $GREENLIGHT_DB_DSN up (Now apply new changes again)
+
 CREATE TABLE IF NOT EXISTS movies (
   id bigserial PRIMARY KEY,
   created_at timestamp(0) with time zone NOT NULL DEFAULT NOW(),
